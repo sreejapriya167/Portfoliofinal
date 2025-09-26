@@ -1,0 +1,22 @@
+# Build with Maven and JDK 21
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+
+WORKDIR /app
+
+COPY CICDPROJECTBackend/pom.xml .
+COPY CICDPROJECTBackend/.mvn .mvn
+COPY CICDPROJECTBackend/mvnw .
+COPY CICDPROJECTBackend/src src
+
+RUN ./mvnw clean package -DskipTests
+
+# Run with Java runtime
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

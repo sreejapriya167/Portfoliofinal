@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: portfolio-db
+    hostname: portfolio-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: projectdb
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3310:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - portfolio-net
+    # This healthcheck ensures the database is ready before other services connect.
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: portfolio-backend
+    hostname: portfolio-backend
+    restart: always
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://portfolio-db:3306/projectdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    # This condition tells the backend to wait for the db's healthcheck to pass.
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    networks:
+      - portfolio-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: portfolio-frontend
+    hostname: portfolio-frontend
+    restart: always
+    ports:
+      - "8012:80"
+    depends_on:
+      - backend
+    networks:
+      - portfolio-net
+
+volumes:
+  db_data:
+
+networks:
+  portfolio-net:
+    driver: bridge
